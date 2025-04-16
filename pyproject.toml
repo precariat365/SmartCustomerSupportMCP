@@ -1,0 +1,15 @@
+[project]
+name = "mcp-smart-customer-support"
+version = "0.1.0"
+description = "智能客服示例"
+requires-python = ">=3.10"
+authors = [
+    {name = "ggguo", email = "ggguo@example.com"}
+]
+dependencies = [
+    "mcp[cli]>=1.6.0",
+    "python-dotenv",
+]
+
+[project.scripts]
+mcp-smart-customer-support = "mcp_smart_customer_support:main"
