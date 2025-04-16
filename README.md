@@ -2,6 +2,8 @@
 
 这是一个基于MCP框架的智能客服系统示例项目，用于演示如何构建和部署智能客服应用。
 
+文档：https://mp.weixin.qq.com/s/gz3ZL_3XD8sfxustNQvK2g
+
 ## 功能特点
 
 - 智能问答服务
@@ -18,15 +20,13 @@
 
 1. 创建并激活虚拟环境（推荐）：
 ```bash
-python -m venv .venv
+uv venv 
 source .venv/bin/activate  # Linux/macOS
-# 或
-.venv\Scripts\activate  # Windows
 ```
 
 2. 安装依赖：
 ```bash
-pip install .
+uv pip install .
 ```
 
 ## 使用方法
@@ -65,7 +65,7 @@ src/mcp_smart_customer_support/
 
 ## 作者
 
-ggguo (ggguo@example.com)
+ggguo (admin@precariat.tech)
 
 ## 许可证
 
