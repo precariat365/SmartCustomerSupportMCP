@@ -11,6 +11,8 @@ from .human_customer_service import HumanCustomerService
 from .order_operations import OrderOperations
 from .product_knowledge import ProductKnowledgeBase
 
+SYSTEM_PROMPT = """你是一个智能客服，能够通过 MCP 快速获取相关信息，回答客户关于产品的问题。对于复杂问题，能够自动转接给人工客服，并提供客户的基本信息和问题描述。"""
+
 logger = logging.getLogger('mcp_server')
 logger.info("Starting MCP Server")
 
