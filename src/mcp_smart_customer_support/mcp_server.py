@@ -2,10 +2,16 @@ import json
 import logging
 from typing import Any, Dict
 
-import mcp
+import uvicorn
 from mcp import types
 from mcp.server import Server, InitializationOptions, NotificationOptions
+from mcp.server.sse import SseServerTransport
 from pydantic import AnyUrl
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route, Mount
 
 from .human_customer_service import HumanCustomerService
 from .order_operations import OrderOperations
@@ -16,13 +22,15 @@ SYSTEM_PROMPT = """你是一个智能客服，能够通过 MCP 快速获取相�
 logger = logging.getLogger('mcp_server')
 logger.info("Starting MCP Server")
 
+server = Server("mcp-smart-customer-support")
+
 
 async def main():
-    server = Server("mcp-smart-customer-support")
-
     # Register handlers
     logger.debug("Registering handlers")
 
+
+async def init_prompts():
     @server.list_prompts()
     async def handle_list_prompts() -> list[types.Prompt]:
         logger.debug("Handling list_prompts request")
@@ -115,6 +123,8 @@ async def main():
             ],
         )
 
+
+async def init_resources():
     @server.list_resources()
     async def handle_list_resources() -> list[types.Resource]:
         logger.debug("Handling list_resources request")
@@ -143,6 +153,8 @@ async def main():
             logger.error(f"Unknown resource path: {path}")
             raise ValueError(f"Unknown resource path: {path}")
 
+
+async def init_tools():
     @server.list_tools()
     async def handle_list_tools() -> list[types.Tool]:
         """List available tools"""
@@ -201,17 +213,113 @@ async def main():
         except Exception as e:
             return [types.TextContent(type="text", text=f"Error: {str(e)}")]
 
-    async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
-        logger.info("Server running with stdio transport")
-        await server.run(
-            read_stream,
-            write_stream,
-            InitializationOptions(
-                server_name="mcp_smart_customer_support",
-                server_version="0.1.0",
-                capabilities=server.get_capabilities(
-                    notification_options=NotificationOptions(),
-                    experimental_capabilities={},
-                ),
-            ),
-        )
+
+async def run_stdio():
+    """运行标准输入输出模式的服务器
+
+    使用标准输入输出流(stdio)运行服务器，主要用于命令行交互模式
+
+    Raises:
+        Exception: 当服务器运行出错时抛出异常
+    """
+    from mcp.server.stdio import stdio_server
+    await init_prompts()
+    await init_resources()
+    await init_tools()
+
+    try:
+        async with stdio_server() as (read_stream, write_stream):
+            logger.info("Server running with stdio transport")
+            await server.run(
+                read_stream,
+                write_stream,
+                InitializationOptions(
+                    server_name="mcp_smart_customer_support",
+                    server_version="0.1.0",
+                    capabilities=server.get_capabilities(
+                        notification_options=NotificationOptions(),
+                        experimental_capabilities={},
+                    ),
+                )
+            )
+    except Exception as e:
+        logger.error(f"服务器运行错误: {str(e)}")
+        raise
+
+
+def run_sse():
+    """运行SSE(Server-Sent Events)模式的服务器
+
+    启动一个支持SSE的Web服务器，允许客户端通过HTTP长连接接收服务器推送的消息
+    服务器默认监听0.0.0.0:9000
+    """
+
+    async def startup():
+        await init_tools()
+
+    async def auth_middleware(request, call_next):
+        """认证中间件
+
+        验证请求中的认证信息，确保只有合法用户可以访问SSE服务
+        """
+        # 从请求头中获取认证token
+        auth_token = request.headers.get('Authorization')
+
+        # 验证token (这里需要根据实际需求实现token验证逻辑)
+        if not verify_token(auth_token):
+            return PlainTextResponse('Invalid token', status_code=401)
+
+        response = await call_next(request)
+        return response
+
+    def verify_token(token: str) -> bool:
+        """验证token的有效性
+
+        Args:
+            token: 待验证的token字符串
+
+        Returns:
+            bool: token是否有效
+        """
+        # 这里实现具体的token验证逻辑
+        # 可以使用JWT、数据库验证等方式
+        return True  # 临时返回True，需要替换为实际的验证逻辑
+
+    sse = SseServerTransport("/messages/")
+
+    async def handle_sse(request):
+        """处理SSE连接请求
+
+        Args:
+            request: HTTP请求对象
+        """
+        async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
+            await server.run(
+                streams[0],
+                streams[1],
+                InitializationOptions(
+                    server_name="mcp_smart_customer_support",
+                    server_version="0.1.0",
+                    capabilities=server.get_capabilities(
+                        notification_options=NotificationOptions(),
+                        experimental_capabilities={},
+                    ),
+                )
+            )
+
+    starlette_app = Starlette(
+        debug=True,
+        routes=[
+            Route("/sse", endpoint=handle_sse),
+            Mount("/messages/", app=sse.handle_post_message)
+        ],
+        on_startup=[startup],
+        middleware=[
+            Middleware(BaseHTTPMiddleware, dispatch=auth_middleware)
+        ]
+    )
+    try:
+        uvicorn.run(starlette_app, host="0.0.0.0", port=9000)
+    except Exception as e:
+        logger.error(f"SSE服务器运行错误: {str(e)}")
+        raise

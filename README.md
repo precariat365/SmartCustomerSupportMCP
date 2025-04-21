@@ -30,26 +30,73 @@ uv pip install .
 ```
 
 ## 使用方法
-
-1. 使用inspector：
+1. 运行
+- 以stdio方式运行，需要以--stdio启动
 ```bash
-npx @modelcontextprotocol/inspector uv --directory /opt/apps/python_project/SmartCustomerSupportMCP run mcp-smart-customer-support
+uv --directory /opt/apps/python_project/SmartCustomerSupportMCP run mcp-smart-customer-support --stdio
+```
+or
+```bash
+ python start.py --stdio
+ ```
+
+- 以sse方式运行，直接启动即可,默认端口9000
+```bash
+uv --directory /opt/apps/python_project/SmartCustomerSupportMCP run mcp-smart-customer-support
+```
+or
+```bash
+ python start.py 
+ ```
+
+2. stdio方式使用inspector：
+```bash
+npx @modelcontextprotocol/inspector uv --directory /opt/apps/python_project/SmartCustomerSupportMCP run mcp-smart-customer-support --stdio
+```
+3. 使用Vscode或Claude等桌面应用
+```json
+
+{
+  "mcpServers": {
+      "SmartCustomerSupportMCP": {
+        "command": "uv",
+        "args": [
+          "--directory",
+          "/opt/apps/python_project/SmartCustomerSupportMCP", 
+          "run",
+          "mcp-smart-customer-support",
+          "--stdio"
+        ]
+    }
+  }
+}    
 ```
 
-2. 使用Vscode或Claude等桌面应用
+**增加环境变量信息**
 ```json
 {
   "mcpServers": {
-    "SmartCustomerSupportMCP": {
-    "command": "uv",
-    "args": [
-      "--directory", 
-    "/opt/apps/python_project/SmartCustomerSupportMCP",
-      "run",
-      "mcp-smart-customer-support"
-    ]}
+      "SmartCustomerSupportMCP": {
+        "command": "uv",
+        "args": [
+          "--directory",
+          "/opt/apps/python_project/SmartCustomerSupportMCP", 
+          "run",
+          "mcp-smart-customer-support",
+          "--stdio"
+        ],
+        "env": {
+          "MYSQL_HOST": "192.168.xxx.xxx",
+          "MYSQL_PORT": "3306",
+          "MYSQL_USER": "root",
+          "MYSQL_PASSWORD": "root",
+          "MYSQL_DATABASE": "a_llm",
+          "MYSQL_ROLE": "admin"
+       }
+    }
   }
-}
+}  
+        
 ```
 
 ## 项目结构
